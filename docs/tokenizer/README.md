@@ -36,3 +36,5 @@ Character-based tokenization worked well with various neural network architectur
 In order to keep the vocabulary to minimal and also capture character level dependencies to an extent, sub-word tokenizers split text into words and in turn split them into different sub-word which are then represented as individual tokens. One such algorithm is **Byte-Pair Encoding** that works on bytes as opposed to character. **Byte** is used to represent an individual character natively on computers. Hence, the algorithm works on individual bytes.
 
 An example of how our text might be tokenized is: `["Hello", ",", " World", "!"]`.
+
+Look at [bpe.py](./bpe.py) for a simple implementation of the Byte-Pair Encoding tokenizer. =
