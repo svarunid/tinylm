@@ -1,3 +1,5 @@
+**Note**: This is just a naive introduction to tokenizers. To learn in-depth about tokenizers, check out [Andrej Karpathy](https://x.com/karpathy)'s [lecture](https://www.youtube.com/watch?v=zduSFxRajkE&t=6453s).
+
 # Tokenizers
 
 For any neural network to understand **data**, it has to represented in **numbers**. In case of LLMs, they expect the textual data to be in numerical format. They don't see actual texts rather they see a text to number mapping that we construct.
@@ -34,5 +36,3 @@ Character-based tokenization worked well with various neural network architectur
 In order to keep the vocabulary to minimal and also capture character level dependencies to an extent, sub-word tokenizers split text into words and in turn split them into different sub-word which are then represented as individual tokens. One such algorithm is **Byte-Pair Encoding** that works on bytes as opposed to character. **Byte** is used to represent an individual character natively on computers. Hence, the algorithm works on individual bytes.
 
 An example of how our text might be tokenized is: `["Hello", ",", " World", "!"]`.
-
-**Note**: This is just a naive introduction to tokenizers. To learn in-depth about tokenizers, check out [Andrej Karpathy](https://x.com/karpathy)'s [lecture](https://www.youtube.com/watch?v=zduSFxRajkE&t=6453s).
