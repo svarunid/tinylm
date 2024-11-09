@@ -37,4 +37,4 @@ In order to keep the vocabulary to minimal and also capture character level depe
 
 An example of how our text might be tokenized is: `["Hello", ",", " World", "!"]`.
 
-Look at [bpe.py](./bpe.py) for a simple implementation of the Byte-Pair Encoding tokenizer. =
+Look at [bpe.py](./bpe.py) for a simple implementation of the Byte-Pair Encoding tokenizer.
