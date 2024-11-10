@@ -1,0 +1,5 @@
+[project]
+name = "tinylm"
+version = "0.1.0"
+description = "Tiny versions of popular open-source LLMs"
+authors = [{ name = "Arun S V", email = "arunsv@tinyleap.org" }]
