@@ -28,7 +28,7 @@ Splitting text into individual characters is one simple yet great solution. The 
 Character-based tokenization worked well with various neural network architectures and hence was used in many popular works. Yet, it posed a few important limitations:
 
 - The model's context is limited and the information the model sees before predicting the next token is also limited resulting in poor quality predictions.
-- Increasing the context is computationally expensive at both during inference & training.
+- Increasing the context is computationally expensive during both inference & training.
 - Model demands more data to capture semantic and linguistic features of the text.
 
 ## Sub-word Tokenizer (Byte-Pair Encoding)
@@ -37,4 +37,4 @@ In order to keep the vocabulary to minimal and also capture character level depe
 
 An example of how our text might be tokenized is: `["Hello", ",", " World", "!"]`.
 
-Look at [bpe.py](./bpe.py) for a simple implementation of the Byte-Pair Encoding tokenizer.
+Look at [bpe.py](./bpe.py) for an extended version of the Byte-Pair Encoding tokenizer by [tiktoken](https://github.com/openai/tiktoken/blob/main/tiktoken/_educational.py).
