@@ -1,2 +1,4 @@
 .env/
 notebooks/
+*.egg-info/
+**/__pycache__
