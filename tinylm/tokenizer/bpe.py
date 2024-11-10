@@ -37,7 +37,7 @@ def _bpe_encode(data: List[str], vocab: Dict[bytes, int], tokens: List[int]):
             if min_pair is None:
                 break
 
-            word = _bpe_merge(word, pair)
+            word = _bpe_merge(word, min_pair)
 
         tokens.extend([vocab[b] for b in word])
 
@@ -47,7 +47,7 @@ class BytePairEncoder:
         self.regex: re.Pattern = re.compile(pattern)
         self._vocab = {bytes([i]): i for i in range(2**8)}
 
-    def encode(self, data: str, allowed_special: List[str]) -> List[int]:
+    def encode(self, data: str, allowed_special: List[str] = []) -> List[int]:
         tokens = []
 
         if hasattr(self, "special_regex"):
