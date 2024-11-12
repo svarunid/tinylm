@@ -37,4 +37,4 @@ In order to keep the vocabulary to minimal and also capture character level depe
 
 An example of how our text might be tokenized is: `["Hello", ",", " World", "!"]`.
 
-Look at [bpe.py](/tinylm/tokenizer/bpe.py) for an extended version of the Byte-Pair Encoding tokenizer by [tiktoken](https://github.com/openai/tiktoken/blob/main/tiktoken/_educational.py).
+Look at [bpe.py](/tinylm/bpe.py) for an extended version of the Byte-Pair Encoding tokenizer by [tiktoken](https://github.com/openai/tiktoken/blob/main/tiktoken/_educational.py).
