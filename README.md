@@ -8,7 +8,6 @@
 - **Simple CLI Interface**: Train models with a single command: `tinylm train`.
 - **Efficient for Local Inference**: Run models on personal devices or limited hardware with reduced memory and compute needs.
 - **Customizable**: Supports flexible configuration options for model structure, training hyperparameters, and tokenization.
-- **Adaptable**: Train models for various downstream tasks, such as text classification, summarization, or code generation, by fine-tuning on task-specific datasets.
 
 ## Why TinyLM?
 
