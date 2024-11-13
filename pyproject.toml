@@ -13,4 +13,4 @@ dependencies = ["python >= 3.11", "pytorch >= 2.5", "tiktoken"]
 packages = ["tinylm"]
 
 [tool.ruff]
-line-length = 150
+line-length = 125
