@@ -1,6 +1,7 @@
-import regex as re
 from collections import Counter
-from typing import List, Dict
+from typing import Dict, List
+
+import regex as re
 
 
 def _bpe_merge(word: List[bytes], pair: bytes) -> List[bytes]:
@@ -87,15 +88,10 @@ class BytePairEncoder:
 
     def train(self, vocab_size: int, data: str, special_tokens: List[str] = []):
         if vocab_size < 2**8:
-            raise ValueError(
-                "vocab_size must be at least 256, so we can encode all bytes"
-            )
+            raise ValueError("vocab_size must be at least 256, so we can encode all bytes")
 
         # Split text into words based on the given pattern
-        words = [
-            [bytes([b]) for b in word.encode("utf-8")]
-            for word in re.findall(self.regex, data)
-        ]
+        words = [[bytes([b]) for b in word.encode("utf-8")] for word in re.findall(self.regex, data)]
 
         while len(self._vocab) < vocab_size:
             # Compute the frequencies of pairs of bytes
@@ -120,9 +116,7 @@ class BytePairEncoder:
 
         # Create a regex to match special tokens and add them to vocabulary
         if special_tokens:
-            self.special_regex: re.Pattern = re.compile(
-                r"|".join(re.escape(tok) for tok in special_tokens)
-            )
+            self.special_regex: re.Pattern = re.compile(r"|".join(re.escape(tok) for tok in special_tokens))
             for tok in special_tokens:
                 tok = tok.encode("utf-8")
                 self._vocab[tok] = len(self._vocab)
