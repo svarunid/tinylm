@@ -7,10 +7,9 @@ name = "tinylm"
 version = "0.1.0"
 description = "Tiny versions of popular open-source LLMs"
 authors = [{ name = "Arun S V", email = "arunsv@tinyleap.org" }]
-dependencies = ["python >= 3.11", "pytorch >= 2.5", "tiktoken"]
 
 [tool.setuptools]
 packages = ["tinylm"]
 
 [tool.ruff]
-line-length = 125
+line-length = 150
