@@ -49,8 +49,9 @@ class BytePairEncoder:
         self._vocab = {bytes([i]): i for i in range(2**8)}
 
     def encode(self, data: str, allowed_special: List[str] = []) -> List[int]:
-        tokens = []
+        assert hasattr(self, "_mapping")
 
+        tokens = []
         if hasattr(self, "special_regex"):
             start = 0
             while data:
@@ -83,6 +84,8 @@ class BytePairEncoder:
         return tokens
 
     def decode(self, tokens: List[int]) -> str:
+        assert hasattr(self, "_mapping")
+
         text = b"".join(self._mapping[tok] for tok in tokens)
         return text.decode("utf-8", errors="replace")
 
@@ -116,7 +119,7 @@ class BytePairEncoder:
 
         # Create a regex to match special tokens and add them to vocabulary
         if special_tokens:
-            self.special_regex: re.Pattern = re.compile(r"|".join(re.escape(tok) for tok in special_tokens))
+            self.special_regex = re.compile(r"|".join(re.escape(tok) for tok in special_tokens))
             for tok in special_tokens:
                 tok = tok.encode("utf-8")
                 self._vocab[tok] = len(self._vocab)
