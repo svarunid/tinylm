@@ -51,8 +51,8 @@ class CausalAttention(nn.Module):
             self.kv_heads = heads
 
         self.q_proj = nn.Linear(dim, dim, bias)
-        self.k_proj = nn.Linear(dim, self.kv_heads * self.head_dim, bias)
-        self.v_proj = nn.Linear(dim, self.kv_heads * self.head_dim, bias)
+        self.k_proj = nn.Linear(dim, int(self.kv_heads * self.head_dim), bias)
+        self.v_proj = nn.Linear(dim, int(self.kv_heads * self.head_dim), bias)
         self.o_proj = nn.Linear(dim, dim)
 
     def forward(self, x, mask=None, pos_emb=None):
@@ -87,7 +87,7 @@ class MLP(nn.Module):
         self.up_proj = nn.Linear(dim, config["hidden_size"])
         # Dynamically initialize the activation function
         if activation["name"] == "SwiGLU":
-            self.gate_proj = nn.Linear(dim, dim, bias=False)
+            self.gate_proj = nn.Linear(dim, config["hidden_size"], bias=False)
         self.act = getattr(utils, activation["name"])(**activation.get("parameters", {}))
         self.down_proj = nn.Linear(config["hidden_size"], dim)
 
