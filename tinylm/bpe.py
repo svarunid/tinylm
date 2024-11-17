@@ -1,4 +1,6 @@
 from collections import Counter
+import pickle
+from pathlib import Path
 from typing import Dict, List
 
 import regex as re
@@ -125,3 +127,17 @@ class BytePairEncoder:
                 self._vocab[tok] = len(self._vocab)
 
         self._mapping = {token: pair for pair, token in self._vocab.items()}
+
+    def save(self, path):
+        file_path = Path(path)
+        file_path.parent.mkdir(parents=True, exist_ok=True)
+
+        with file_path.open("wb") as f:
+            pickle.dump(self, f, protocol=pickle.HIGHEST_PROTOCOL)
+
+    @staticmethod
+    def load(path):
+        file_path = Path(path)
+
+        with file_path.open("rb") as f:
+            return pickle.load(f)
