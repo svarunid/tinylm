@@ -76,27 +76,43 @@ class CausalAttention(nn.Module):
         return self.o_proj(attn_output)
 
 
-class Block(nn.Module):
+class MLP(nn.Module):
     def __init__(self, config):
         super().__init__()
         dim = config["dim"]
         norm, activation = config["norm"], config["activation"]
-        kv_heads = config["gqa"]["kv_heads"] if "gqa" in config else None
 
         # Dynamically initialize the input normalization layer based on configuration
         self.input_norm = getattr(utils, norm["name"])(dim, **norm.get("parameters", {}))
-        self.attn = CausalAttention(dim, config["heads"], kv_heads, config["qkv_bias"])
-        self.attn_norm = getattr(utils, norm["name"])(dim, **norm.get("parameters", {}))
-
         self.up_proj = nn.Linear(dim, config["hidden_size"])
         # Dynamically initialize the activation function
+        if activation["name"] == "SwiGLU":
+            self.gate_proj = nn.Linear(dim, dim, bias=False)
         self.act = getattr(utils, activation["name"])(**activation.get("parameters", {}))
         self.down_proj = nn.Linear(config["hidden_size"], dim)
 
+    def forward(self, x):
+        x = self.up_proj(self.input_norm(x))
+        if hasattr(self, "gate_proj"):
+            gate = self.gate_proj(x)
+            return x + self.down_proj(self.act(x, gate))
+        return x + self.down_proj(self.act(x))
+
+
+class Block(nn.Module):
+    def __init__(self, config):
+        super().__init__()
+        dim = config["dim"]
+        norm = config["norm"]
+        kv_heads = config["gqa"]["kv_heads"] if "gqa" in config else None
+
+        self.input_norm = getattr(utils, norm["name"])(dim, **norm.get("parameters", {}))
+        self.attn = CausalAttention(dim, config["heads"], kv_heads, config["qkv_bias"])
+        self.mlp = MLP(config)
+
     def forward(self, x, mask=None, pos_emb=None):
         x = x + self.attn(self.input_norm(x), mask, pos_emb)
-        x = x + self.down_proj(self.act(self.up_proj(self.attn_norm(x))))
-        return x
+        return x + self.mlp(x)
 
 
 class GPT(nn.Module):
