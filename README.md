@@ -1,22 +1,9 @@
 # TinyLM
 
-**TinyLM** is a framework designed to make training your own small language model simple and accessible. With TinyLM, you can train and fine-tune compact, efficient models on your own data, optimized for low-resource settings and local inference. Whether you're interested in building models for specific downstream tasks or exploring language model development, TinyLM offers a streamlined, user-friendly workflow.
+Building and training my own tiny langugae model from scratch. The model achitecture is blend between architectures
+of popular open-source models like LLaMA, Qwen2.5-Coder, etc. The architecture uses RoPE for positional encoding,
+Grouped Query Attention (GQA), QKV bias, weight tying, etc.
 
-## Installation
+## Future Enhancements
 
-Clone the TinyLM repository:
-
-```bash
-git clone https://github.com/yourusername/tinylm.git
-cd tinylm
-```
-
-Install dependencies:
-
-```bash
-pip install .
-```
-
-## Contributing
-
-Contributions are welcome! To get started, fork the repository, make your changes, and submit a pull request.
+- Initialize weights according to Maximal Update Parameterization (muP).

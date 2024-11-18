@@ -46,19 +46,3 @@ loop:
   # schedule:
   #   peak_lr: 3e-4
   #   weight_decay: 0.05
-
-data:
-  path: HuggingFaceFW/fineweb
-  name: "sample-10BT"
-  split: "train"
-  streaming: true
-
-tokenizer:
-  path: "tmp/tokenizer.pkl"
-  # tiktoken:
-
-checkpoint:
-  dir: "checkpoint/"
-
-logging:
-  dir: "logs/"
