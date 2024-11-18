@@ -32,14 +32,6 @@ class GPTConfig:
     theta: int
 
 
-class SwiGLU(nn.Module):
-    def __init__(self):
-        super().__init__()
-
-    def forward(self, x, gate):
-        return F.silu(x) * gate
-
-
 class CausalAttention(nn.Module):
     def __init__(self, dim, heads, kv_heads=None, bias=False):
         assert dim % heads == 0
@@ -78,11 +70,10 @@ class MLP(nn.Module):
         self.input_norm = nn.LayerNorm(dim)
         self.up_proj = nn.Linear(dim, hidden)
         self.gate_proj = nn.Linear(dim, hidden, bias=False)
-        self.act = SwiGLU()
         self.down_proj = nn.Linear(hidden, dim)
 
     def forward(self, x):
-        return x + self.down_proj(self.act(self.up_proj(self.input_norm(x)), self.gate_proj(x)))
+        return self.down_proj(self.up_proj(self.input_norm(x)) * F.silu(self.gate_proj(x)))
 
 
 class Block(nn.Module):
