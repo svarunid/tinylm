@@ -113,6 +113,12 @@ class GPT(nn.Module):
         self.register_buffer("sin", sin)
         self.register_buffer("cos", cos)
 
+        self.apply(self._init_weights)
+
+    def _init_weights(self, module):
+        if module.bias is not None:
+            torch.nn.init.zeros_(module.bias)
+
     def forward(self, x, mask=None):
         B, T = x.size()
         x = self.tok_emb(x)
