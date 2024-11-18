@@ -55,12 +55,12 @@ class CausalAttention(nn.Module):
         self.v_proj = nn.Linear(dim, int(self.kv_heads * self.head_dim), bias)
         self.o_proj = nn.Linear(dim, dim, bias=False)
 
-    def forward(self, x, mask=None):
+    def forward(self, x, sin, cos, mask=None):
         B, T, C = x.size()
 
         q, k, v = self.q_proj(x), self.k_proj(x), self.v_proj(x)
 
-        q, k = apply_rope(q, k)
+        q, k = apply_rope(q, k, sin, cos)
         q, k, v = map(lambda x: x.view(B, T, -1, self.head_dim).transpose(1, 2), (q, k, v))
 
         causal_mask = torch.tril(torch.ones(T, T, device=x.device))
@@ -92,8 +92,8 @@ class Block(nn.Module):
         self.attn = CausalAttention(config.dim, config.heads, config.kv_heads, config.qkv_bias)
         self.mlp = MLP(config.dim, config.hidden)
 
-    def forward(self, x, mask=None, pos_emb=None):
-        x = x + self.attn(self.input_norm(x), mask, pos_emb)
+    def forward(self, x, sin, cos, mask=None):
+        x = x + self.attn(self.input_norm(x), sin, cos, mask)
         return x + self.mlp(x)
 
 
@@ -109,11 +109,15 @@ class GPT(nn.Module):
 
         self.output_proj.weight = self.tok_emb.weight
 
+        sin, cos = precompute_rope_embeddings(config.dim, config.seq, config.theta)
+        self.register_buffer("sin", sin)
+        self.register_buffer("cos", cos)
+
     def forward(self, x, mask=None):
         B, T = x.size()
         x = self.tok_emb(x)
 
         for block in self.blocks:
-            x = block(x, mask=mask)
+            x = block(x, self.sin, self.cos, mask)
 
         return self.output_proj(self.norm(x))
