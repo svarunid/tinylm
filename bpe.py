@@ -129,15 +129,27 @@ class BytePairEncoder:
         self._mapping = {token: pair for pair, token in self._vocab.items()}
 
     def save(self, path):
+        assert hasattr(self, "_mapping")
+
         file_path = Path(path)
         file_path.parent.mkdir(parents=True, exist_ok=True)
 
+        # Avoid saving _mapping to reduces file size.
+        attr = vars(self)
+        del attr["_mapping"]
+
         with file_path.open("wb") as f:
-            pickle.dump(self, f, protocol=pickle.HIGHEST_PROTOCOL)
+            pickle.dump(attr, f, protocol=pickle.HIGHEST_PROTOCOL)
 
-    @staticmethod
-    def load(path):
-        file_path = Path(path)
+    @classmethod
+    def load(cls, path):
+        with open(path, "rb") as f:
+            attr = pickle.load(f)
 
-        with file_path.open("rb") as f:
-            return pickle.load(f)
+        obj = cls(attr["regex"])
+        obj._vocab = attr["_vocab"]
+        if "special_regex" in attr:
+            obj.special_regex = attr["special_regex"]
+
+        obj._mapping = {token: pair for pair, token in attr["_vocab"].items()}
+        return obj
