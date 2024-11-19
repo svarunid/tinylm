@@ -2,6 +2,7 @@ from dataclasses import dataclass
 
 import torch
 import torch.nn as nn
+import torch.optim as optim
 import torch.nn.functional as F
 
 
@@ -29,7 +30,8 @@ class GPTConfig:
     layers: int
     hidden_size: int
     vocab_size: int
-    theta: int
+    theta: int = 100000
+    qkv_bias: bool = False
 
 
 class CausalAttention(nn.Module):
@@ -93,12 +95,13 @@ class GPT(nn.Module):
         super().__init__()
         self.config = config
 
-        self.tok_emb = nn.Embedding(config.vocab, config.dim)
+        self.emb = nn.Embedding(config.vocab, config.dim)
         self.blocks = nn.ModuleList([Block(config) for _ in range(config["layers"])])
         self.norm = nn.LayerNorm(config.dim)
         self.output_proj = nn.Linear(config.dim, config.vocab, bias=False)
 
-        self.output_proj.weight = self.tok_emb.weight
+        # Tie the weights of the embedding and the last projection layer.
+        self.output_proj.weight = self.emb.weight
 
         sin, cos = precompute_rope_embeddings(config.dim, config.seq, config.theta)
         self.register_buffer("sin", sin)
@@ -110,9 +113,19 @@ class GPT(nn.Module):
         if module.bias is not None:
             torch.nn.init.zeros_(module.bias)
 
+    def configure_optimizer(self, lr, eps=1e-8, weight_decay=1e-2):
+        param_dict = {pn: p for pn, p in self.named_parameters()}
+        param_dict = {pn: p for pn, p in param_dict.items() if p.requires_grad}
+
+        decay_params = [p for n, p in param_dict.items() if p.dim() >= 2]
+        nodecay_params = [p for n, p in param_dict.items() if p.dim() < 2]
+
+        optim_groups = [{"params": decay_params, "weight_decay": weight_decay}, {"params": nodecay_params, "weight_decay": 0.0}]
+        return optim.AdamW(optim_groups, lr, eps=eps)
+
     def forward(self, x, mask=None):
         B, T = x.size()
-        x = self.tok_emb(x)
+        x = self.emb(x)
 
         for block in self.blocks:
             x = block(x, self.sin, self.cos, mask)
