@@ -8,11 +8,11 @@ import torch.nn.functional as F
 
 def precompute_rope_embeddings(dim, seq, theta=10000):
     position = torch.arange(0, seq).unsqueeze(-1).expand(-1, dim)
-    div_term = torch.pow(theta, -2 * (torch.arange(0, dim) // 2) / dim)
-    position = position * div_term
+    position = position / torch.pow(theta, 2 * (torch.arange(0, dim) // 2) / dim)
 
-    sin = torch.sin(position)
-    cos = torch.cos(position)
+    sin, cos = torch.sin(position[:, 0::2]), torch.cos(position[:, 1::2])
+    sin = torch.stack([sin, sin], dim=-1).reshape(seq, dim)
+    cos = torch.stack([cos, cos], dim=-1).reshape(seq, dim)
     return sin, cos
 
 
@@ -27,6 +27,7 @@ class GPTConfig:
     dim: int
     seq: int
     heads: int
+    kv_heads: int
     layers: int
     hidden_size: int
     vocab_size: int
