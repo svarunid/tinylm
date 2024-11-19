@@ -1,9 +1,9 @@
 import tiktoken
 from datasets import load_dataset
 
-from gpt import GPTConfig, GPT
+from gpt import ModelConfig, GenerationConfig, Model
 
-config = GPTConfig(
+config = ModelConfig(
     dim=768,
     seq=1024,
     heads=12,
@@ -13,7 +13,7 @@ config = GPTConfig(
     vocab_size=49152,
 )
 
-model = GPT(config).compile()
+model = Model(config).compile()
 
 tokenizer = tiktoken.get_encoding("r50k_base")
 

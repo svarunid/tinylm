@@ -23,7 +23,7 @@ def apply_rope(q, k, sin, cos):
 
 
 @dataclass
-class GPTConfig:
+class ModelConfig:
     dim: int
     seq: int
     heads: int
@@ -33,6 +33,12 @@ class GPTConfig:
     vocab_size: int
     theta: int = 100000
     qkv_bias: bool = False
+
+
+@dataclass
+class GenerationConfig:
+    temp: int = 1
+    top_k: int = 1
 
 
 class CausalAttention(nn.Module):
@@ -91,7 +97,7 @@ class Block(nn.Module):
         return x + self.mlp(x)
 
 
-class GPT(nn.Module):
+class Model(nn.Module):
     def __init__(self, config):
         super().__init__()
         self.config = config
@@ -125,10 +131,14 @@ class GPT(nn.Module):
         return optim.AdamW(optim_groups, lr, eps=eps)
 
     def forward(self, x, mask=None):
-        B, T = x.size()
         x = self.emb(x)
 
         for block in self.blocks:
             x = block(x, self.sin, self.cos, mask)
 
         return self.output_proj(self.norm(x))
+
+    @torch.inference_mode()
+    def generate(self, x, config=GenerationConfig()):
+        out = torch.topk(F.softmax(self.forward(x) / config.temp), config.top_k)
+        return out
