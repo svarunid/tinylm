@@ -39,6 +39,7 @@ class ModelConfig:
 class GenerationConfig:
     temp: int = 1
     top_k: int = 1
+    generations: int = 1
 
 
 class CausalAttention(nn.Module):
@@ -64,8 +65,8 @@ class CausalAttention(nn.Module):
         q, k = apply_rope(q, k, sin, cos)
         q, k, v = map(lambda x: x.view(B, T, -1, self.head_dim).transpose(1, 2), (q, k, v))
 
-        causal_mask = torch.tril(torch.ones(T, T, device=x.device))
-        mask = mask * causal_mask if mask is not None else causal_mask
+        causal_mask = torch.tril(torch.ones(T, T, device=x.device)).unsqueeze(0)
+        mask = mask.unsqueeze(1) * causal_mask if mask is not None else causal_mask
 
         attn_output = F.scaled_dot_product_attention(q, k, v, attn_mask=mask.bool(), enable_gqa=True)
         attn_output = attn_output.transpose(1, 2).contiguous().view(B, T, C)
@@ -114,6 +115,7 @@ class Model(nn.Module):
         self.register_buffer("sin", sin)
         self.register_buffer("cos", cos)
 
+        # Custom initialization of weights
         self.apply(self._init_weights)
 
     def _init_weights(self, module):
@@ -121,12 +123,12 @@ class Model(nn.Module):
             torch.nn.init.zeros_(module.bias)
 
     def configure_optimizer(self, lr, eps=1e-8, weight_decay=1e-2):
-        param_dict = {pn: p for pn, p in self.named_parameters()}
-        param_dict = {pn: p for pn, p in param_dict.items() if p.requires_grad}
+        param_dict = {pn: p for pn, p in self.named_parameters().items() if p.requires_grad}
 
         decay_params = [p for n, p in param_dict.items() if p.dim() >= 2]
         nodecay_params = [p for n, p in param_dict.items() if p.dim() < 2]
 
+        # Don't decay biases
         optim_groups = [{"params": decay_params, "weight_decay": weight_decay}, {"params": nodecay_params, "weight_decay": 0.0}]
         return optim.AdamW(optim_groups, lr, eps=eps)
 
@@ -139,6 +141,22 @@ class Model(nn.Module):
         return self.output_proj(self.norm(x))
 
     @torch.inference_mode()
-    def generate(self, x, config=GenerationConfig()):
-        out = torch.topk(F.softmax(self.forward(x) / config.temp), config.top_k)
+    def generate(self, x: torch.Tensor, mask=None, config=GenerationConfig()):
+        B, T = x.size()
+        out = [[x[b][t] for t in range(T) if mask[b][t] != 0] for b in range(B)]
+
+        for i in range(config.generations):
+            probs, indices = torch.topk(F.softmax(self(x, mask) / config.temp), config.top_k, dim=-1)
+            indices = indices[torch.arange(B), torch.multinomial(probs, num_samples=1).squeeze(-1)]
+
+            for i in range(B):
+                out[i].append(indices[i])
+                if mask and (m := mask[i] == 0).any():
+                    pad = m.nonzero().squeeze(-1)[0]
+                    x[i, pad] = indices[i]
+                    mask[i, pad] = 1
+                else:
+                    x[i, :-1] = x[i, 1:]
+                    x[i, -1] = indices[i]
+
         return out
