@@ -1,9 +1,11 @@
-from collections import Counter
 import pickle
+import time
+from collections import Counter
 from pathlib import Path
 from typing import Dict, List
 
 import regex as re
+from tqdm import tqdm
 
 
 def _bpe_merge(word: List[bytes], pair: bytes) -> List[bytes]:
@@ -94,14 +96,17 @@ class BytePairEncoder:
     def train(self, vocab_size: int, data: str, special_tokens: List[str] = []):
         if vocab_size < 2**8:
             raise ValueError("vocab_size must be at least 256, so we can encode all bytes")
+        print("Training BPE. Number of character: ", len(data))
 
+        start = time.process_time()
         # Split text into words based on the given pattern
-        words = [[bytes([b]) for b in word.encode("utf-8")] for word in re.findall(self.regex, data)]
+        data = [[bytes([b]) for b in word.encode("utf-8")] for word in re.findall(self.regex, data)]
 
+        pbar = tqdm(total=vocab_size - 256)
         while len(self._vocab) < vocab_size:
             # Compute the frequencies of pairs of bytes
             stats = Counter()
-            for word in words:
+            for word in data:
                 for pair in zip(word[:-1], word[1:]):
                     stats[pair] += 1
 
@@ -114,10 +119,12 @@ class BytePairEncoder:
                 # Merge the most common pair and replace the occurrences
                 # of the pair in the original text
                 new_words = []
-                for word in words:
+                for word in data:
                     new_word = _bpe_merge(word, pair)
                     new_words.append(new_word)
-                words = new_words
+                data = new_words
+            pbar.update(1)
+        pbar.close()
 
         # Create a regex to match special tokens and add them to vocabulary
         if special_tokens:
@@ -127,6 +134,9 @@ class BytePairEncoder:
                 self._vocab[tok] = len(self._vocab)
 
         self._mapping = {token: pair for pair, token in self._vocab.items()}
+        end = time.process_time()
+
+        print(f"Total time: {(end-start)/60} min")
 
     def save(self, path):
         assert hasattr(self, "_mapping")
@@ -138,7 +148,7 @@ class BytePairEncoder:
         attr = vars(self)
         del attr["_mapping"]
 
-        with file_path.open("wb") as f:
+        with file_path.open("wb+") as f:
             pickle.dump(attr, f, protocol=pickle.HIGHEST_PROTOCOL)
 
     @classmethod
@@ -147,9 +157,8 @@ class BytePairEncoder:
             attr = pickle.load(f)
 
         obj = cls(attr["regex"])
-        obj._vocab = attr["_vocab"]
+        obj._vocab, obj._mapping = attr["_vocab"], {token: pair for pair, token in attr["_vocab"].items()}
         if "special_regex" in attr:
             obj.special_regex = attr["special_regex"]
 
-        obj._mapping = {token: pair for pair, token in attr["_vocab"].items()}
         return obj

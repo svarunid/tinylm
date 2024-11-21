@@ -2,8 +2,8 @@ from dataclasses import dataclass
 
 import torch
 import torch.nn as nn
-import torch.optim as optim
 import torch.nn.functional as F
+import torch.optim as optim
 
 
 def precompute_rope_embeddings(dim, seq, theta=10000):
@@ -17,8 +17,10 @@ def precompute_rope_embeddings(dim, seq, theta=10000):
 
 
 def apply_rope(q, k, sin, cos):
+    dims = k.size()
+    sin, cos = sin[: dims[-2]], cos[: dims[-2]]
     q = q * cos + torch.stack([-q[..., 1::2], q[..., ::2]], dim=-1).reshape_as(q) * sin
-    k = k * cos + torch.stack([-k[..., 1::2], k[..., ::2]], dim=-1).reshape_as(k) * sin
+    k = k * cos[:, : dims[-1]] + torch.stack([-k[..., 1::2], k[..., ::2]], dim=-1).reshape_as(k) * sin[:, : dims[-1]]
     return q, k
 
 
@@ -26,11 +28,11 @@ def apply_rope(q, k, sin, cos):
 class ModelConfig:
     dim: int
     seq: int
+    vocab: int
     heads: int
     kv_heads: int
     layers: int
-    hidden_size: int
-    vocab_size: int
+    hidden: int
     theta: int = 100000
     qkv_bias: bool = False
 
@@ -58,18 +60,19 @@ class CausalAttention(nn.Module):
         self.o_proj = nn.Linear(dim, dim, bias=False)
 
     def forward(self, x, sin, cos, mask=None):
-        B, T, C = x.size()
+        dims = x.size()
 
         q, k, v = self.q_proj(x), self.k_proj(x), self.v_proj(x)
 
         q, k = apply_rope(q, k, sin, cos)
-        q, k, v = map(lambda x: x.view(B, T, -1, self.head_dim).transpose(1, 2), (q, k, v))
+        q = q.view(-1, dims[-2], self.num_heads, self.head_dim).transpose(1, 2)
+        k, v = map(lambda x: x.view(-1, dims[-2], self.kv_heads, self.head_dim).transpose(1, 2), (k, v))
 
-        causal_mask = torch.tril(torch.ones(T, T, device=x.device)).unsqueeze(0)
+        causal_mask = torch.tril(torch.ones(dims[-2], dims[-2], device=x.device)).unsqueeze(0)
         mask = mask.unsqueeze(1) * causal_mask if mask is not None else causal_mask
 
         attn_output = F.scaled_dot_product_attention(q, k, v, attn_mask=mask.bool(), enable_gqa=True)
-        attn_output = attn_output.transpose(1, 2).contiguous().view(B, T, C)
+        attn_output = attn_output.transpose(1, 2).contiguous().view(-1, dims[-2], dims[-1])
 
         return self.o_proj(attn_output)
 
@@ -104,7 +107,7 @@ class Model(nn.Module):
         self.config = config
 
         self.emb = nn.Embedding(config.vocab, config.dim)
-        self.blocks = nn.ModuleList([Block(config) for _ in range(config["layers"])])
+        self.blocks = nn.ModuleList([Block(config) for _ in range(config.layers)])
         self.norm = nn.LayerNorm(config.dim)
         self.output_proj = nn.Linear(config.dim, config.vocab, bias=False)
 
@@ -119,11 +122,14 @@ class Model(nn.Module):
         self.apply(self._init_weights)
 
     def _init_weights(self, module):
-        if module.bias is not None:
+        if isinstance(module, nn.Linear) and module.bias is not None:
             torch.nn.init.zeros_(module.bias)
+        elif isinstance(module, nn.Embedding):
+            torch.nn.init.normal_(module.weight, mean=0.0, std=0.02)
 
     def configure_optimizer(self, lr, eps=1e-8, weight_decay=1e-2):
-        param_dict = {pn: p for pn, p in self.named_parameters().items() if p.requires_grad}
+        param_dict = {pn: p for pn, p in self.named_parameters()}
+        param_dict = {pn: p for pn, p in param_dict.items() if p.requires_grad}
 
         decay_params = [p for n, p in param_dict.items() if p.dim() >= 2]
         nodecay_params = [p for n, p in param_dict.items() if p.dim() < 2]
@@ -141,22 +147,11 @@ class Model(nn.Module):
         return self.output_proj(self.norm(x))
 
     @torch.inference_mode()
-    def generate(self, x: torch.Tensor, mask=None, config=GenerationConfig()):
-        B, T = x.size()
-        out = [[x[b][t] for t in range(T) if mask[b][t] != 0] for b in range(B)]
-
-        for i in range(config.generations):
-            probs, indices = torch.topk(F.softmax(self(x, mask) / config.temp), config.top_k, dim=-1)
-            indices = indices[torch.arange(B), torch.multinomial(probs, num_samples=1).squeeze(-1)]
-
-            for i in range(B):
-                out[i].append(indices[i])
-                if mask and (m := mask[i] == 0).any():
-                    pad = m.nonzero().squeeze(-1)[0]
-                    x[i, pad] = indices[i]
-                    mask[i, pad] = 1
-                else:
-                    x[i, :-1] = x[i, 1:]
-                    x[i, -1] = indices[i]
-
-        return out
+    def generate(self, x, config: GenerationConfig):
+        for b in len(x):
+            inp = torch.tensor(x[b], dtype=torch.long)
+            for g in range(config.generations):
+                probs, indices = torch.topk(torch.softmax(self(inp)), config.top_k)
+                inp = torch.cat((inp, indices[torch.multinomial(probs, num_samples=1)]), dim=-1)
+            x[b] = inp.tolist()
+        return x
