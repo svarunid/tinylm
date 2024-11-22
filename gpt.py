@@ -68,8 +68,8 @@ class CausalAttention(nn.Module):
         q = q.view(-1, dims[-2], self.num_heads, self.head_dim).transpose(1, 2)
         k, v = map(lambda x: x.view(-1, dims[-2], self.kv_heads, self.head_dim).transpose(1, 2), (k, v))
 
-        causal_mask = torch.tril(torch.ones(dims[-2], dims[-2], device=x.device)).unsqueeze(0)
-        mask = mask.unsqueeze(1) * causal_mask if mask is not None else causal_mask
+        causal_mask = torch.tril(torch.ones(dims[-2], dims[-2], device=x.device))
+        mask = mask.unsqueeze(-2) * causal_mask if mask is not None else causal_mask
 
         attn_output = F.scaled_dot_product_attention(q, k, v, attn_mask=mask.bool(), enable_gqa=True)
         attn_output = attn_output.transpose(1, 2).contiguous().view(-1, dims[-2], dims[-1])

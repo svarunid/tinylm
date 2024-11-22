@@ -98,7 +98,7 @@ class BytePairEncoder:
             raise ValueError("vocab_size must be at least 256, so we can encode all bytes")
         print("Training BPE. Number of character: ", len(data))
 
-        start = time.process_time()
+        start = time.perf_counter()
         # Split text into words based on the given pattern
         data = [[bytes([b]) for b in word.encode("utf-8")] for word in re.findall(self.regex, data)]
 
@@ -134,9 +134,8 @@ class BytePairEncoder:
                 self._vocab[tok] = len(self._vocab)
 
         self._mapping = {token: pair for pair, token in self._vocab.items()}
-        end = time.process_time()
 
-        print(f"Total time: {(end-start)/60} min")
+        print(f"Total time: {(time.perf_counter() - start) / 60} min")
 
     def save(self, path):
         assert hasattr(self, "_mapping")
@@ -158,6 +157,7 @@ class BytePairEncoder:
 
         obj = cls(attr["regex"])
         obj._vocab, obj._mapping = attr["_vocab"], {token: pair for pair, token in attr["_vocab"].items()}
+
         if "special_regex" in attr:
             obj.special_regex = attr["special_regex"]
 
